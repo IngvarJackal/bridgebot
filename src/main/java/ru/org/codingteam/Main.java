@@ -17,7 +17,7 @@ public class Main
         try
         {
             String botNick = "ivrbot";
-            String botPassword = "furry1234";
+            String botPassword = "<password>";
             String botDomain = "jabber.ru";
             String botServer = "jabber.ru";
             int botPort = 5222;
