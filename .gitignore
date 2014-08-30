@@ -1,5 +1,11 @@
-/project/project/target/
-/project/target/
-/target/
-.idea/
+# remove local preferences
 bot.prefs.yml
+
+# remove maven out files
+target/
+
+# remove IDEA files
+.idea/
+/*.iml
+*.ipr
+*.iws
