@@ -6,6 +6,6 @@ target/
 
 # remove IDEA files
 .idea/
-/*.iml
+*.iml
 *.ipr
 *.iws
