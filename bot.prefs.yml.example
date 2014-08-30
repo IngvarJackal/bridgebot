@@ -1,0 +1,6 @@
+botNick: login
+botPassword: top_secret_password
+botDomain: ururu.ru
+botServer: ururu.ru
+botPort: 5222
+botConferences: {ururu@ururu.ru, ururu2@ururu.ru}

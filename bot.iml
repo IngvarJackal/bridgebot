@@ -15,6 +15,7 @@
     <orderEntry type="library" name="Maven: xpp3:xpp3:1.1.4c" level="project" />
     <orderEntry type="library" name="Maven: org.igniterealtime.smack:smack-tcp:4.0.2" level="project" />
     <orderEntry type="library" name="Maven: org.igniterealtime.smack:smack-extensions:4.0.2" level="project" />
+    <orderEntry type="library" name="Maven: org.yaml:snakeyaml:1.13" level="project" />
   </component>
 </module>
 
