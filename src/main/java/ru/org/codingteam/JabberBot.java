@@ -115,9 +115,10 @@ public class JabberBot implements Runnable
     synchronized void leaveMUC(String roomNick) throws SmackException.NotConnectedException {
         String localNick = formatNick4MUC(roomNick);
         for (String conference : listOfMUCs.keySet()) {
-            if (!conference.equals(StringUtils.parseResource(roomNick))) {
-                listOfMUCs.get(conference).get(localNick).leave(); // TODO: java.lang.reflect.InvocationTargetException caused by: java.lang.NullPointerException -- WTF???
-                listOfMUCs.get(conference).remove(localNick);
+            MultiUserChat conn = listOfMUCs.get(conference).remove(localNick);
+            if (conn != null) {
+                System.out.println(conn);
+                conn.leave(); // TODO: java.lang.reflect.InvocationTargetException caused by: java.lang.NullPointerException -- WTF???
             }
         }
     }
