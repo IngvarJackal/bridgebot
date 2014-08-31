@@ -4,6 +4,7 @@ import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
+import org.jivesoftware.smack.util.StringUtils;
 import org.jivesoftware.smackx.muc.DiscussionHistory;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.ParticipantStatusListener;
@@ -16,7 +17,7 @@ import java.text.SimpleDateFormat;
 @SuppressWarnings("unchecked")
 public class JabberBot implements Runnable
 {
-    private final String BOTNAME = "_uru"; // should start from underscore!
+    private final String BOTNAME = "_brdg"; // should start from underscore!
 
     private String nick;
     private String password;
@@ -55,14 +56,14 @@ public class JabberBot implements Runnable
             for (String conference : conferences) {
                 joinMUC(conference, BOTNAME, true);
                 for (String occupant : listOfMUCs.get(conference).get(BOTNAME).getOccupants()) {
-                    if (!occupant.split("/")[1].startsWith("_")) {
+                    if (!StringUtils.parseResource(occupant).startsWith("_")) {
                         users.add(occupant);
                     }
                 }
             }
             for (String conference : conferences) {
                 for (String user : users) {
-                    if (!user.split("/")[0].equals(conference)) {
+                    if (!StringUtils.parseBareAddress(user).equals(conference)) {
                         joinMUC(conference, user);
                     }
                 }
@@ -77,22 +78,29 @@ public class JabberBot implements Runnable
         }
     }
 
-    void joinMUC(String chat, String room_nick)
+    void joinMUC(String chat, String roomNick)
             throws XMPPException, SmackException, java.io.IOException {
-        joinMUC(chat, room_nick, false);
+        joinMUC(chat, roomNick, false);
     }
 
-    synchronized void joinMUC(String chat, String room_nick, boolean makeListener)
+    synchronized void joinMUC(String chat, String roomNick, boolean makeListener)
             throws XMPPException, SmackException, java.io.IOException {
-        String local_nick = formatNick4MUC(room_nick);
+        String localNick = formatNick4MUC(roomNick);
         XMPPConnection conn = new XMPPTCPConnection(new ConnectionConfiguration(server, port, domain));
         conn.connect();
-        conn.login(nick, password, chat + "/" + local_nick);
+        conn.login(nick, password, chat + "/" + localNick);
 
         DiscussionHistory history = new DiscussionHistory();
         history.setMaxChars(0);
         MultiUserChat muc = new MultiUserChat(conn, chat);
-        muc.join(local_nick, "", history, 1000);
+        while (true) {
+            try {
+                muc.join(localNick, "", history, 1000);
+                break;
+            } catch (SmackException e) {
+                // just ignore?
+            }
+        }
         if (makeListener) {
             muc.addMessageListener(new MucPacketListener());
             muc.addParticipantStatusListener(new MucParticipantListener());
@@ -101,15 +109,15 @@ public class JabberBot implements Runnable
         if (!listOfMUCs.containsKey(chat)) {
             listOfMUCs.put(chat, new HashMap<String, MultiUserChat>());
         }
-        listOfMUCs.get(chat).put(local_nick, muc);
+        listOfMUCs.get(chat).put(localNick, muc);
     }
 
-    synchronized void leaveMUC(String room_nick) throws SmackException.NotConnectedException {
-        String local_nick = formatNick4MUC(room_nick);
+    synchronized void leaveMUC(String roomNick) throws SmackException.NotConnectedException {
+        String localNick = formatNick4MUC(roomNick);
         for (String conference : listOfMUCs.keySet()) {
-            if (!conference.equals(room_nick.split("/")[0])) {
-                listOfMUCs.get(conference).get(local_nick).leave(); // TODO: java.lang.reflect.InvocationTargetException caused by: java.lang.NullPointerException -- WTF???
-                listOfMUCs.get(conference).remove(local_nick);
+            if (!conference.equals(StringUtils.parseResource(roomNick))) {
+                listOfMUCs.get(conference).get(localNick).leave(); // TODO: java.lang.reflect.InvocationTargetException caused by: java.lang.NullPointerException -- WTF???
+                listOfMUCs.get(conference).remove(localNick);
             }
         }
     }
@@ -122,7 +130,7 @@ public class JabberBot implements Runnable
     synchronized void sendMessage(String user, String message, HashMap<String, HashMap<String, MultiUserChat>> mucs)
             throws XMPPException, SmackException.NotConnectedException {
         for (String conference : mucs.keySet()) {
-            if (!conference.equals(user.split("/")[0])) {
+            if (!conference.equals(StringUtils.parseBareAddress(user))) {
                 String formatted = formatNick(user);
                 mucs.get(conference).get(formatted).sendMessage(message);
             }
@@ -136,7 +144,7 @@ public class JabberBot implements Runnable
     synchronized void changeNick(String user, String newNick, HashMap<String, HashMap<String, MultiUserChat>> mucs)
             throws SmackException.NotConnectedException, XMPPException.XMPPErrorException, SmackException.NoResponseException {
         for (String conference : mucs.keySet()) {
-            if (!conference.equals(user.split("/")[0])) {
+            if (!conference.equals(StringUtils.parseBareAddress(user))) {
                 String formatted = formatNick(user);
                 String newFormattedNick = newNick + "@" + formatted.split("@")[formatted.split("@").length - 1];
                 mucs.get(conference).get(formatted).changeNickname(newFormattedNick); // TODO: java.lang.reflect.InvocationTargetException caused by: java.lang.NullPointerException -- same issue as above -- WTF???
@@ -152,7 +160,7 @@ public class JabberBot implements Runnable
             Message message = (Message)packet;
             if (message.getSubject() == null || message.getSubject().isEmpty()) {
                 String user = message.getFrom();
-                String name = user.split("/")[1];
+                String name = StringUtils.parseResource(user);
                 if (!name.contains("@") ||
                         (name.contains("@") &&
                          name.split("@")[name.split("@").length - 1].length() > 3)) {
@@ -179,12 +187,12 @@ public class JabberBot implements Runnable
         @Override
         public void joined(String participant) {
             try {
-                String name = participant.split("/")[1];
+                String name = StringUtils.parseResource(participant);
                 if (!name.contains("@") ||
                         (name.contains("@") &&
                          name.split("@")[name.split("@").length - 1].length() > 3)) {
                     for (String conference : listOfMUCs.keySet()) {
-                        if (!conference.equals(participant.split("/")[0])) {
+                        if (!conference.equals(StringUtils.parseBareAddress(participant))) {
                             joinMUC(conference, participant);
                         }
                     }
@@ -236,7 +244,7 @@ public class JabberBot implements Runnable
 */
             try {
                 leaveMUC(participant);
-                joinMUC(participant.split("/")[0], newNick);
+                joinMUC(StringUtils.parseBareAddress(participant), newNick);
             } catch (XMPPException | IOException | SmackException e) {
                 e.printStackTrace();
             }
@@ -245,19 +253,19 @@ public class JabberBot implements Runnable
 
     private static String formatNick(String user) {
         StringBuilder domain = new StringBuilder();
-        for (String dom : user.split("/")[0].split("\\.")) {
+        for (String dom : StringUtils.parseBareAddress(user).split("\\.")) {
             domain.append(dom.charAt(0));
         }
-        return user.split("/")[1] + "@" + domain.toString();
+        return StringUtils.parseResource(user)+ "@" + domain.toString();
     }
 
-    private static String formatNick4MUC(String room_nick) {
-        String local_nick;
-        if (room_nick.contains("/")) {
-            local_nick = formatNick(room_nick);
+    private static String formatNick4MUC(String roomNick) {
+        String localNick;
+        if (roomNick.contains("/")) {
+            localNick = formatNick(roomNick);
         } else {
-            local_nick = room_nick;
+            localNick = roomNick;
         }
-        return local_nick;
+        return localNick;
     }
 }
