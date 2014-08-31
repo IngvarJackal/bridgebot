@@ -1,6 +1,9 @@
 # remove local preferences
 bot.prefs.yml
 
+# remove built jars
+*.jar
+
 # remove maven out files
 target/
 
